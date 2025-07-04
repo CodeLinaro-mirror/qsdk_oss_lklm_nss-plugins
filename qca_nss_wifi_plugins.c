@@ -196,6 +196,11 @@ ppe_vp_status_t qca_nss_wifi_plugin_vp_cfg_update(struct net_device *ath_dev, st
 	 */
 	if (unlikely(vpui->usr_type == PPE_VP_USER_TYPE_PASSIVE)) {
 		pr_err("Dev: %s Passive VP: %d needs to be removed\n", ath_dev->name, vp_num);
+
+		/*
+		 * release the reference taken during register
+		 */
+		dev_put(ath_dev);
 		return ppe_vp_free(vp_num);
 	}
 
