@@ -42,16 +42,15 @@ void qca_nss_wifi_plugin_ds_free(struct qca_nss_wifi_plugin_ds_node *node_obj)
 }
 
 /*
- * qca_nss_wifi_plugin_get_ds_node
+ * qca_nss_wifi_plugin_get_ds_node_internal
  * 	get ds node
  */
-struct ppe_ds *qca_nss_wifi_plugin_get_ds_node(int ppeds_node_id)
+struct ppe_ds *qca_nss_wifi_plugin_get_ds_node_internal(int ppeds_node_id)
 {
 	struct qca_nss_wifi_plugin_ds_gbl *g_plugin_ds = &gbl_plugin_ds;
 	struct qca_nss_wifi_plugin_ds_node *plugin_ds_obj;
 	struct ppe_ds * ppe_ds_node = NULL;
 
-	spin_lock_bh(&g_plugin_ds->lock);
 	if (!list_empty(&g_plugin_ds->active_nodes)) {
 		list_for_each_entry(plugin_ds_obj, &g_plugin_ds->active_nodes, list) {
 			int node_id = plugin_ds_obj->ppeds_node_id;
@@ -62,8 +61,30 @@ struct ppe_ds *qca_nss_wifi_plugin_get_ds_node(int ppeds_node_id)
 		}
 	}
 
-	spin_unlock_bh(&g_plugin_ds->lock);
 	return ppe_ds_node;
+}
+
+/*
+ * qca_nss_wifi_plugin_get_ds_node
+ * 	get ds node
+ */
+struct ppe_ds *qca_nss_wifi_plugin_get_ds_node(int ppeds_node_id)
+{
+	struct qca_nss_wifi_plugin_ds_gbl *g_plugin_ds = &gbl_plugin_ds;
+	struct ppe_ds * ppe_ds_node = NULL;
+
+	/*
+	 * This function can be called from IRQ context.
+	 * Avoid doing spin_lock_bh in such cases.
+	 */
+	if (in_interrupt() == 0) {
+		spin_lock_bh(&g_plugin_ds->lock);
+		ppe_ds_node = qca_nss_wifi_plugin_get_ds_node_internal(ppeds_node_id);
+		spin_unlock_bh(&g_plugin_ds->lock);
+		return ppe_ds_node;
+	}
+
+	return qca_nss_wifi_plugin_get_ds_node_internal(ppeds_node_id);
 }
 
 /*
