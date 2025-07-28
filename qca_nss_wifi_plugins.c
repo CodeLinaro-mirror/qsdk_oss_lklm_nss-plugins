@@ -91,7 +91,7 @@ struct ppe_ds *qca_nss_wifi_plugin_get_ds_node(int ppeds_node_id)
  * qca_nss_wifi_plugin_ds_wlan_inst_alloc
  * 	inst alloc
  */
-int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops *ops, size_t priv_size)
+int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops_v2 *ops, size_t priv_size)
 {
 	struct qca_nss_wifi_plugin_ds_gbl *plugin_ds_gbl = &gbl_plugin_ds;
 	struct qca_nss_wifi_plugin_ds_node *plugin_ds_obj;
