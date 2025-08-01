@@ -143,10 +143,10 @@ bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_
  * qca_nss_wifi_plugin_ds_wlan_instance_stop
  * 	instance stop
  */
-void qca_nss_wifi_plugin_ds_wlan_instance_stop(struct ppe_ds_wlan_ctx_info_handle *wlan_info_hdl, int ppeds_node_id)
+void qca_nss_wifi_plugin_ds_wlan_instance_stop(struct ppe_ds_wlan_ctx_info_handle *wlan_info_hd, int ppeds_node_id)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_instance_stop_v2(node, wlan_info_hdl);
+	return ppe_ds_wlan_instance_stop_v2(node, wlan_info_hd);
 }
 
 /*
