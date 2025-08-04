@@ -212,19 +212,6 @@ ppe_vp_status_t qca_nss_wifi_plugin_vp_cfg_update(struct net_device *ath_dev, st
 		return PPE_VP_STATUS_PORT_INVALID;
 	}
 
-	/*
-	 * Passive VP needs to be pushed through RFS
-	 */
-	if (unlikely(vpui->usr_type == PPE_VP_USER_TYPE_PASSIVE)) {
-		pr_err("Dev: %s Passive VP: %d needs to be removed\n", ath_dev->name, vp_num);
-
-		/*
-		 * release the reference taken during register
-		 */
-		dev_put(ath_dev);
-		return ppe_vp_free(vp_num);
-	}
-
 	if (ppe_vp_update_vp_stats_cb(vp_num, vpui->stats_cb) == PPE_VP_STATUS_SUCCESS) {
 		pr_err("VP at port num : %u, updated with stats_cb", vp_num);
 	}
