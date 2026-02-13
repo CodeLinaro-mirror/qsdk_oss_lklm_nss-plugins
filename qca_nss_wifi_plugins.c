@@ -131,12 +131,48 @@ int qca_nss_wifi_plugin_ds_wlan_inst_start(struct ppe_ds_wlan_ctx_info_handle *w
 
 /*
  * qca_nss_wifi_plugin_ds_wlan_inst_register
- * 	instance register
+ * 	instance register for wifi7
  */
 bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_info, int ppeds_node_id)
 {
+	struct ppe_ds_wlan_arch_reg_info wlan_reg_info = {0};
 	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_inst_register(ppeds_node, reg_info);
+	if (!ppeds_node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return false;
+	}
+
+	wlan_reg_info.wifi7_cfg.ppe2tcl_ba = reg_info->ppe2tcl_ba;
+	wlan_reg_info.wifi7_cfg.reo2ppe_ba = reg_info->reo2ppe_ba;
+	wlan_reg_info.wifi7_cfg.ppe2tcl_num_desc = reg_info->ppe2tcl_num_desc;
+	wlan_reg_info.wifi7_cfg.reo2ppe_num_desc = reg_info->reo2ppe_num_desc;
+	wlan_reg_info.wifi7_cfg.ppe2tcl_start_idx = reg_info->ppe2tcl_start_idx;
+	wlan_reg_info.wifi7_cfg.reo2ppe_start_idx = reg_info->reo2ppe_start_idx;
+	wlan_reg_info.wifi7_cfg.ppe_ds_int_mode_enabled = reg_info->ppe_ds_int_mode_enabled;
+
+	return ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, &wlan_reg_info);
+}
+
+/*
+ * qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode
+ * 	instance register for wifi8
+ */
+bool qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode(struct ppe_ds_wlan_arch_reg_info *wlan_reg_info, int ppeds_node_id)
+{
+	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
+	if (!ppeds_node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return false;
+	}
+
+	if (wlan_reg_info->wifi_arch_mode == PPE_DS_WIFI_ARCH_MODE_WIFI8) {
+		return ppe_ds_wlan_inst_register_arch_mode_wifi8(ppeds_node, wlan_reg_info);
+	} else if (wlan_reg_info->wifi_arch_mode == PPE_DS_WIFI_ARCH_MODE_WIFI7){
+		return ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, wlan_reg_info);
+	}
+
+	pr_err("%s: Invalid wifi type %d\n", __func__, wlan_reg_info->wifi_arch_mode);
+	return false;
 }
 
 /*
@@ -242,6 +278,7 @@ struct nss_plugins_ops plugins_ops = {
 	.ds_inst_alloc = qca_nss_wifi_plugin_ds_wlan_inst_alloc,
 	.ds_inst_start = qca_nss_wifi_plugin_ds_wlan_inst_start,
 	.ds_inst_register = qca_nss_wifi_plugin_ds_wlan_inst_register,
+	.ds_inst_register_wifi_arch_mode = qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode,
 	.ds_inst_stop = qca_nss_wifi_plugin_ds_wlan_instance_stop,
 	.ds_inst_free = qca_nss_wifi_plugin_ds_wlan_inst_free,
 	.ds_inst_get_ctx = qca_nss_wifi_plugin_ds_wlan_get_intr_ctxt,
