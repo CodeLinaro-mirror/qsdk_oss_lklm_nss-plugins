@@ -91,7 +91,7 @@ struct ppe_ds *qca_nss_wifi_plugin_get_ds_node(int ppeds_node_id)
  * qca_nss_wifi_plugin_ds_wlan_inst_alloc
  * 	inst alloc
  */
-int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops_v2 *ops, size_t priv_size)
+int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops *ops, size_t priv_size)
 {
 	struct qca_nss_wifi_plugin_ds_gbl *plugin_ds_gbl = &gbl_plugin_ds;
 	struct qca_nss_wifi_plugin_ds_node *plugin_ds_obj;
@@ -104,8 +104,7 @@ int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops_v2 *ops, size_
 		return -1;
 	}
 
-	spin_lock_init(&plugin_ds_gbl->lock);
-	node = ppe_ds_wlan_inst_alloc_v2(ops, priv_size);
+	node = ppe_ds_wlan_inst_alloc(ops, priv_size);
 	if (!node) {
 		qca_nss_wifi_plugin_ds_free(plugin_ds_obj);
 		return -1;
@@ -114,7 +113,10 @@ int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops_v2 *ops, size_
 	node_id = ppe_ds_get_node_id(node);
 	plugin_ds_obj->ppeds_node_id = node_id;
 	plugin_ds_obj->node = node;
+
+	spin_lock_bh(&plugin_ds_gbl->lock);
 	list_add(&plugin_ds_obj->list, &plugin_ds_gbl->active_nodes);
+	spin_unlock_bh(&plugin_ds_gbl->lock);
 
 	return node_id;
 }
@@ -126,17 +128,53 @@ int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops_v2 *ops, size_
 int qca_nss_wifi_plugin_ds_wlan_inst_start(struct ppe_ds_wlan_ctx_info_handle *wlan_info_hd, int ppeds_node_id)
 {
 	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_instance_start_v2(ppeds_node, wlan_info_hd);
+	return ppe_ds_wlan_instance_start(ppeds_node, wlan_info_hd);
 }
 
 /*
  * qca_nss_wifi_plugin_ds_wlan_inst_register
- * 	instance register
+ * 	instance register for wifi7
  */
 bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_info, int ppeds_node_id)
 {
+	struct ppe_ds_wlan_arch_reg_info wlan_reg_info = {0};
 	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_inst_register_v2(ppeds_node, reg_info);
+	if (!ppeds_node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return false;
+	}
+
+	wlan_reg_info.wifi7_cfg.ppe2tcl_ba = reg_info->ppe2tcl_ba;
+	wlan_reg_info.wifi7_cfg.reo2ppe_ba = reg_info->reo2ppe_ba;
+	wlan_reg_info.wifi7_cfg.ppe2tcl_num_desc = reg_info->ppe2tcl_num_desc;
+	wlan_reg_info.wifi7_cfg.reo2ppe_num_desc = reg_info->reo2ppe_num_desc;
+	wlan_reg_info.wifi7_cfg.ppe2tcl_start_idx = reg_info->ppe2tcl_start_idx;
+	wlan_reg_info.wifi7_cfg.reo2ppe_start_idx = reg_info->reo2ppe_start_idx;
+	wlan_reg_info.wifi7_cfg.ppe_ds_int_mode_enabled = reg_info->ppe_ds_int_mode_enabled;
+
+	return ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, &wlan_reg_info);
+}
+
+/*
+ * qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode
+ * 	instance register for wifi8
+ */
+bool qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode(struct ppe_ds_wlan_arch_reg_info *wlan_reg_info, int ppeds_node_id)
+{
+	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
+	if (!ppeds_node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return false;
+	}
+
+	if (wlan_reg_info->wifi_arch_mode == PPE_DS_WIFI_ARCH_MODE_WIFI8) {
+		return ppe_ds_wlan_inst_register_arch_mode_wifi8(ppeds_node, wlan_reg_info);
+	} else if (wlan_reg_info->wifi_arch_mode == PPE_DS_WIFI_ARCH_MODE_WIFI7){
+		return ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, wlan_reg_info);
+	}
+
+	pr_err("%s: Invalid wifi type %d\n", __func__, wlan_reg_info->wifi_arch_mode);
+	return false;
 }
 
 /*
@@ -146,7 +184,7 @@ bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_
 void qca_nss_wifi_plugin_ds_wlan_instance_stop(struct ppe_ds_wlan_ctx_info_handle *wlan_info_hd, int ppeds_node_id)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_instance_stop_v2(node, wlan_info_hd);
+	return ppe_ds_wlan_instance_stop(node, wlan_info_hd);
 }
 
 /*
@@ -155,8 +193,28 @@ void qca_nss_wifi_plugin_ds_wlan_instance_stop(struct ppe_ds_wlan_ctx_info_handl
  */
 void qca_nss_wifi_plugin_ds_wlan_inst_free(int ppeds_node_id)
 {
-	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_inst_free_v2(node);
+	struct qca_nss_wifi_plugin_ds_gbl *g_plugin_ds = &gbl_plugin_ds;
+	struct qca_nss_wifi_plugin_ds_node *plugin_ds_obj = NULL;
+	struct qca_nss_wifi_plugin_ds_node *tmp;
+	struct ppe_ds *node = NULL;
+
+	spin_lock_bh(&g_plugin_ds->lock);
+	list_for_each_entry_safe(plugin_ds_obj, tmp, &g_plugin_ds->active_nodes, list) {
+		if (plugin_ds_obj->ppeds_node_id == ppeds_node_id) {
+			node = plugin_ds_obj->node;
+			list_del(&plugin_ds_obj->list);
+			break;
+		}
+	}
+
+	spin_unlock_bh(&g_plugin_ds->lock);
+	if (!node) {
+		pr_err("Failed to find node for ppeds_node_id %d\n", ppeds_node_id);
+		return;
+	}
+
+	ppe_ds_wlan_inst_free(node);
+	qca_nss_wifi_plugin_ds_free(plugin_ds_obj);
 }
 
 /*
@@ -166,7 +224,7 @@ void qca_nss_wifi_plugin_ds_wlan_inst_free(int ppeds_node_id)
 void *qca_nss_wifi_plugin_ds_wlan_get_intr_ctxt(int ppeds_node_id)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_get_intr_ctxt_v2(node);
+	return ppe_ds_wlan_get_intr_ctxt(node);
 }
 
 /*
@@ -176,7 +234,7 @@ void *qca_nss_wifi_plugin_ds_wlan_get_intr_ctxt(int ppeds_node_id)
 int qca_nss_wifi_plugin_ds_ppe2tcl_wlan_handle_intr(int ppeds_node_id)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_ppe2tcl_wlan_handle_intr_v2(node);
+	return ppe_ds_ppe2tcl_wlan_handle_intr(node);
 }
 
 /*
@@ -186,7 +244,7 @@ int qca_nss_wifi_plugin_ds_ppe2tcl_wlan_handle_intr(int ppeds_node_id)
 int qca_nss_wifi_plugin_ds_reo2ppe_wlan_handle_intr(int ppeds_node_id)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_reo2ppe_wlan_handle_intr_v2(node);
+	return ppe_ds_reo2ppe_wlan_handle_intr(node);
 }
 
 /*
@@ -196,7 +254,7 @@ int qca_nss_wifi_plugin_ds_reo2ppe_wlan_handle_intr(int ppeds_node_id)
 void qca_nss_wifi_plugin_ds_wlan_service_status_update(int ppeds_node_id, bool enable)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	ppe_ds_wlan_service_status_update_v2(node, enable);
+	ppe_ds_wlan_service_status_update(node, enable);
 }
 
 /*
@@ -242,6 +300,7 @@ struct nss_plugins_ops plugins_ops = {
 	.ds_inst_alloc = qca_nss_wifi_plugin_ds_wlan_inst_alloc,
 	.ds_inst_start = qca_nss_wifi_plugin_ds_wlan_inst_start,
 	.ds_inst_register = qca_nss_wifi_plugin_ds_wlan_inst_register,
+	.ds_inst_register_wifi_arch_mode = qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode,
 	.ds_inst_stop = qca_nss_wifi_plugin_ds_wlan_instance_stop,
 	.ds_inst_free = qca_nss_wifi_plugin_ds_wlan_inst_free,
 	.ds_inst_get_ctx = qca_nss_wifi_plugin_ds_wlan_get_intr_ctxt,
@@ -279,6 +338,7 @@ static int __init qca_nss_wifi_plugins_init_module(void)
 {
 	struct qca_nss_wifi_plugin_ds_gbl *plugin_ds_gbl = &gbl_plugin_ds;
 	INIT_LIST_HEAD(&plugin_ds_gbl->active_nodes);
+	spin_lock_init(&plugin_ds_gbl->lock);
 	nss_plugins_info("NSS Plugins Module loaded\n");
 	return 0;
 }
