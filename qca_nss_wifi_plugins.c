@@ -137,6 +137,7 @@ int qca_nss_wifi_plugin_ds_wlan_inst_start(struct ppe_ds_wlan_ctx_info_handle *w
  */
 bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_info, int ppeds_node_id)
 {
+	bool ret;
 	struct ppe_ds_wlan_arch_reg_info wlan_reg_info = {0};
 	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
 	if (!ppeds_node) {
@@ -148,11 +149,16 @@ bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_
 	wlan_reg_info.wifi7_cfg.reo2ppe_ba = reg_info->reo2ppe_ba;
 	wlan_reg_info.wifi7_cfg.ppe2tcl_num_desc = reg_info->ppe2tcl_num_desc;
 	wlan_reg_info.wifi7_cfg.reo2ppe_num_desc = reg_info->reo2ppe_num_desc;
-	wlan_reg_info.wifi7_cfg.ppe2tcl_start_idx = reg_info->ppe2tcl_start_idx;
-	wlan_reg_info.wifi7_cfg.reo2ppe_start_idx = reg_info->reo2ppe_start_idx;
-	wlan_reg_info.wifi7_cfg.ppe_ds_int_mode_enabled = reg_info->ppe_ds_int_mode_enabled;
+	ret =  ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, &wlan_reg_info);
 
-	return ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, &wlan_reg_info);
+	/*
+	 * current EDMA side indexes are needed to be returned back to WLAN driver
+	 * for each up down on ipq95xx/ipq52xx/ipq53xx
+	 */
+	reg_info->ppe2tcl_start_idx = wlan_reg_info.wifi7_cfg.ppe2tcl_start_idx;
+	reg_info->reo2ppe_start_idx = wlan_reg_info.wifi7_cfg.reo2ppe_start_idx;
+	reg_info->ppe_ds_int_mode_enabled = wlan_reg_info.wifi7_cfg.ppe_ds_int_mode_enabled;
+	return ret;
 }
 
 /*
