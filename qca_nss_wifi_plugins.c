@@ -300,6 +300,22 @@ int16_t qca_nss_wifi_plugin_get_vp_num(struct net_device *dev)
 }
 
 /*
+ * qca_nss_wifi_plugin_ds_wlan_get_rxfill_ring_info
+ *	Get RxFill ring filled-count information
+ */
+static void qca_nss_wifi_plugin_ds_wlan_get_rxfill_ring_info(int ppeds_node_id,
+				struct ppe_ds_wlan_rxfill_ring_info *info)
+{
+	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
+	if (!ppeds_node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return;
+	}
+
+	ppe_ds_wlan_get_rxfill_ring_info(ppeds_node, info);
+}
+
+/*
  * qca_nss_wifi_plugins_ops
  */
 struct nss_plugins_ops plugins_ops = {
@@ -315,6 +331,7 @@ struct nss_plugins_ops plugins_ops = {
 	.service_status_update = qca_nss_wifi_plugin_ds_wlan_service_status_update,
 	.vp_cfg_update = qca_nss_wifi_plugin_vp_cfg_update,
 	.get_vp_num = qca_nss_wifi_plugin_get_vp_num,
+	.get_rxfill_ring_info = qca_nss_wifi_plugin_ds_wlan_get_rxfill_ring_info,
 };
 
 /*
