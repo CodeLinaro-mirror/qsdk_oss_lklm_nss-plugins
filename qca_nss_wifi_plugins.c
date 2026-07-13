@@ -128,6 +128,10 @@ int qca_nss_wifi_plugin_ds_wlan_inst_alloc(struct ppe_ds_wlan_ops *ops, size_t p
 int qca_nss_wifi_plugin_ds_wlan_inst_start(struct ppe_ds_wlan_ctx_info_handle *wlan_info_hd, int ppeds_node_id)
 {
 	struct ppe_ds *ppeds_node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
+	if (!ppeds_node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return -EINVAL;
+	}
 	return ppe_ds_wlan_instance_start(ppeds_node, wlan_info_hd);
 }
 
@@ -149,6 +153,7 @@ bool qca_nss_wifi_plugin_ds_wlan_inst_register(struct ppe_ds_wlan_reg_info *reg_
 	wlan_reg_info.wifi7_cfg.reo2ppe_ba = reg_info->reo2ppe_ba;
 	wlan_reg_info.wifi7_cfg.ppe2tcl_num_desc = reg_info->ppe2tcl_num_desc;
 	wlan_reg_info.wifi7_cfg.reo2ppe_num_desc = reg_info->reo2ppe_num_desc;
+	wlan_reg_info.freq = reg_info->freq;
 	ret =  ppe_ds_wlan_inst_register_arch_mode_wifi7(ppeds_node, &wlan_reg_info);
 
 	/*
@@ -190,7 +195,11 @@ bool qca_nss_wifi_plugin_ds_wlan_inst_register_wifi_arch_mode(struct ppe_ds_wlan
 void qca_nss_wifi_plugin_ds_wlan_instance_stop(struct ppe_ds_wlan_ctx_info_handle *wlan_info_hd, int ppeds_node_id)
 {
 	struct ppe_ds *node = qca_nss_wifi_plugin_get_ds_node(ppeds_node_id);
-	return ppe_ds_wlan_instance_stop(node, wlan_info_hd);
+	if (!node) {
+		pr_err("%s: Failed to get ppeds_node for node_id %d\n", __func__, ppeds_node_id);
+		return;
+	}
+	ppe_ds_wlan_instance_stop(node, wlan_info_hd);
 }
 
 /*
@@ -316,6 +325,15 @@ static void qca_nss_wifi_plugin_ds_wlan_get_rxfill_ring_info(int ppeds_node_id,
 }
 
 /*
+ * qca_nss_wifi_plugin_get_ds_node_freq
+ *	Get the radio channel frequency for the PPE-DS driver.
+ */
+static void qca_nss_wifi_plugin_get_ds_node_freq(int node_id, struct ppe_ds_wlan_node_freq *freq)
+{
+	ppe_ds_get_wlan_node_freq(node_id, freq);
+}
+
+/*
  * qca_nss_wifi_plugins_ops
  */
 struct nss_plugins_ops plugins_ops = {
@@ -332,6 +350,7 @@ struct nss_plugins_ops plugins_ops = {
 	.vp_cfg_update = qca_nss_wifi_plugin_vp_cfg_update,
 	.get_vp_num = qca_nss_wifi_plugin_get_vp_num,
 	.get_rxfill_ring_info = qca_nss_wifi_plugin_ds_wlan_get_rxfill_ring_info,
+	.get_ds_node_freq = qca_nss_wifi_plugin_get_ds_node_freq,
 };
 
 /*
